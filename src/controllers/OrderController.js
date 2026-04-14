@@ -5,9 +5,9 @@ import { Address } from "../models/Address.js";
 import pool from "../config/db.js";
 
 const placeOrder = async (req, res) => {
-    const connection = await pool.getConnection();
+    const client = await pool.connect();
     try {
-        await connection.beginTransaction();
+        await client.query("BEGIN");
 
         const orgId = req.org_id;
         const userId = req.user_id;
@@ -20,7 +20,7 @@ const placeOrder = async (req, res) => {
         }
 
         // 2. Fetch Cart Items with FOR UPDATE lock
-        const cartItems = await Cart.getItemsForCheckout(userId, orgId, connection);
+        const cartItems = await Cart.getItemsForCheckout(userId, orgId, client);
         if (cartItems.length === 0) throw new Error("Empty Cart");
 
         let totalAmount = 0;
@@ -38,16 +38,16 @@ const placeOrder = async (req, res) => {
             total_amount: totalAmount,
             payment_id,
             shipping_address_id
-        }, connection);
+        }, client);
 
         // 4. Record Items & Deduct Stock
-        await Order.addItems(orderId, cartItems, connection);
+        await Order.addItems(orderId, cartItems, client);
 
         for (const item of cartItems) {
             // Atomic deduction
             const updated = await Product.update(item.product_id, orgId, {
                 stock_quantity: item.stock_quantity - item.quantity
-            }, connection);
+            }, client);
 
             if (!updated) {
                 throw new Error(`Concurrency error: Stock changed for product ${item.product_id}`);
@@ -55,16 +55,16 @@ const placeOrder = async (req, res) => {
         }
 
 
-        await Cart.clear(userId, orgId, connection);
+        await Cart.clear(userId, orgId, client);
 
-        await connection.commit();
+        await client.query("COMMIT");
         res.status(201).json({ order_id: orderId, total_amount: totalAmount });
 
     } catch (error) {
-        await connection.rollback();
+        await client.query("ROLLBACK");
         res.status(400).json({ message: error.message });
     } finally {
-        connection.release();
+        client.release();
     }
 };
 
@@ -156,7 +156,7 @@ const getDetailedOrderById = async (req, res) => {
  * PATCH /orders/:order_id/status (Admin approval/cancellation)
  */
 const updateOrderStatus = async (req, res) => {
-    const connection = await pool.getConnection();
+    const client = await pool.connect();
     try {
         const orgId = req.org_id;
         const { order_id } = req.params;
@@ -169,19 +169,19 @@ const updateOrderStatus = async (req, res) => {
             });
         }
 
-        await connection.beginTransaction();
+        await client.query("BEGIN");
 
-        await Order.updateStatus(order_id, orgId, status, connection);
+        await Order.updateStatus(order_id, orgId, status, client);
 
-        await connection.commit();
+        await client.query("COMMIT");
         res.json({ order_id: Number(order_id), order_status: status });
 
     } catch (error) {
-        await connection.rollback();
+        await client.query("ROLLBACK");
         console.error('updateOrderStatus error:', error);
         res.status(error.message.includes('not found') ? 404 : 400).json({ message: error.message || 'Failed to update order status.' });
     } finally {
-        connection.release();
+        client.release();
     }
 };
 

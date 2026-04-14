@@ -5,9 +5,9 @@ import pool from "../config/db.js";
  * POST /addresses/
  */
 const addAddress = async (req, res) => {
-    const connection = await pool.getConnection();
+    const client = await pool.connect();
     try {
-        await connection.beginTransaction();
+        await client.query("BEGIN");
 
         const orgId = req.org_id;
         const userId = req.user_id;
@@ -18,7 +18,7 @@ const addAddress = async (req, res) => {
         } = req.body;
 
         if (is_default) {
-            await Address.setDefault(null, userId, orgId, connection);
+            await Address.setDefault(null, userId, orgId, client);
         }
 
         const addressId = await Address.create({
@@ -32,16 +32,16 @@ const addAddress = async (req, res) => {
             postal_code,
             country,
             is_default: !!is_default
-        }, connection);
+        }, client);
 
-        await connection.commit();
+        await client.query("COMMIT");
         res.status(201).json({ address_id: addressId, message: "Address added successfully" });
     } catch (error) {
-        await connection.rollback();
+        await client.query("ROLLBACK");
         console.error("Error adding address:", error);
         res.status(500).json({ message: "Server error adding address" });
     } finally {
-        connection.release();
+        client.release();
     }
 };
 
@@ -65,25 +65,25 @@ const getUserAddresses = async (req, res) => {
  * PUT /addresses/set-default/:address_id
  */
 const setDefaultAddress = async (req, res) => {
-    const connection = await pool.getConnection();
+    const client = await pool.connect();
     try {
-        await connection.beginTransaction();
+        await client.query("BEGIN");
 
         const { address_id } = req.params;
         const userId = req.user_id;
         const orgId = req.org_id;
 
-        const updated = await Address.setDefault(address_id, userId, orgId, connection);
+        const updated = await Address.setDefault(address_id, userId, orgId, client);
         if (!updated) throw new Error("Address not found");
 
-        await connection.commit();
+        await client.query("COMMIT");
         res.json({ message: "Default address updated" });
     } catch (error) {
-        await connection.rollback();
+        await client.query("ROLLBACK");
         console.error("Error in setDefaultAddress:", error);
         res.status(500).json({ message: error.message || "Error setting default address" });
     } finally {
-        connection.release();
+        client.release();
     }
 };
 

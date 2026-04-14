@@ -7,9 +7,9 @@ import pool from '../config/db.js';
  * Multipart/form-data handler.
  */
 const uploadProductImage = async (req, res) => {
-    const connection = await pool.getConnection();
+    const client = await pool.connect();
     try {
-        await connection.beginTransaction();
+        await client.query("BEGIN");
 
         if (!req.file) {
             return res.status(400).json({ message: 'No file uploaded' });
@@ -20,7 +20,7 @@ const uploadProductImage = async (req, res) => {
         const is_primary = req.query.is_primary === 'true' || req.body.is_primary === 'true';
 
         // 1. Verify existence & ownership via Model
-        const prodCheck = await Product.findByIdUnderOrg(product_id, orgId);
+        const prodCheck = await Product.findByIdUnderOrg(product_id, orgId, client);
         if (!prodCheck) {
             return res.status(404).json({ message: 'Product not found' });
         }
@@ -38,27 +38,26 @@ const uploadProductImage = async (req, res) => {
         const publicId = uploadResult.public_id;
 
         // 3. Save to database via Model (handles primary logic internally)
-        // Note: The model's images.add method already handles is_primary logic
         const imageId = await Product.images.add(product_id, orgId, {
             image_url: imageUrl,
             is_primary: is_primary
-        }, connection);
+        }, client);
 
-        await connection.commit();
+        await client.query("COMMIT");
 
         res.status(201).json({
             image_id: imageId,
             image_url: imageUrl,
             public_id: publicId,
-            is_primary: is_primary || false, // The client might want to know if it ended up being primary
+            is_primary: is_primary || false,
             message: 'Image uploaded successfully',
         });
     } catch (error) {
-        await connection.rollback();
+        await client.query("ROLLBACK");
         console.error('Upload error:', error);
         res.status(500).json({ message: error.message || 'Image upload failed' });
     } finally {
-        connection.release();
+        client.release();
     }
 };
 

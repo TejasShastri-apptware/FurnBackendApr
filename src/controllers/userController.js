@@ -147,26 +147,33 @@ const getUserById = async (req, res) => {
  * POST /users/register
  */
 const createUser = async (req, res) => {
-  const connection = await pool.getConnection();
+  const client = await pool.connect();
+
   try {
-    await connection.beginTransaction();
+    await client.query("BEGIN");
 
     const {
       full_name, email, password_hash, phone, role_id,
       address_line1, address_line2, city, state, postal_code, country, label
     } = req.body;
+
     const orgId = req.org_id;
-    
+
     // Insert user
     const userId = await User.create({
-      full_name, email, password_hash, phone, role_id, org_id: orgId
-    }, connection);
+      full_name,
+      email,
+      password_hash,
+      phone,
+      role_id,
+      org_id: orgId
+    }, client);
 
-    // Insert the registration address as the default
+    // Insert default address
     await Address.create({
       org_id: orgId,
       user_id: userId,
-      label: label || 'Home',
+      label: label || "Home",
       address_line1,
       address_line2,
       city,
@@ -174,9 +181,9 @@ const createUser = async (req, res) => {
       postal_code,
       country,
       is_default: true
-    }, connection);
+    }, client);
 
-    await connection.commit();
+    await client.query("COMMIT");
 
     res.status(201).json({
       message: "User and default address created",
@@ -185,14 +192,21 @@ const createUser = async (req, res) => {
     });
 
   } catch (error) {
-    await connection.rollback();
-    if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(400).json({ message: `Email already registered.` });
+    await client.query("ROLLBACK");
+
+    // PostgreSQL duplicate error
+    if (error.code === "23505") {
+      return res.status(400).json({ message: "Email already registered." });
     }
+
     console.error("Error in createUser:", error);
-    res.status(500).json({ message: "Server error during user creation", error: error.message });
+    res.status(500).json({
+      message: "Server error during user creation",
+      error: error.message
+    });
+
   } finally {
-    connection.release();
+    client.release();
   }
 };
 

@@ -12,7 +12,7 @@ const createTag = async (req, res) => {
 
     res.status(201).json({ tag_id: tagId, tag_name, tag_type });
   } catch (error) {
-    if (error.code === 'ER_DUP_ENTRY') {
+    if (error.code === '23505') {
       return res.status(400).json({ message: "Tag already exists in this organization" });
     }
     console.error("Error in createTag:", error);

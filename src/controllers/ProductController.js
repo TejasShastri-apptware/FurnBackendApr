@@ -60,9 +60,9 @@ const getProductByTags = async (req, res) => {
  * POST /products/with-tags
  */
 const createProductWithTags = async (req, res) => {
-  const connection = await pool.getConnection();
+  const client = await pool.connect();
   try {
-    await connection.beginTransaction();
+    await client.query("BEGIN");
 
     const orgId = req.org_id;
     const {
@@ -77,20 +77,20 @@ const createProductWithTags = async (req, res) => {
     const productId = await Product.create({
       org_id: orgId, category_id, name, description, price, discount_price,
       material, color, length, width, height, stock_quantity
-    }, connection);
+    }, client);
 
     if (tag_ids && tag_ids.length > 0) {
-      await Product.tags.sync(productId, tag_ids, orgId, connection);
+      await Product.tags.sync(productId, tag_ids, orgId, client);
     }
 
-    await connection.commit();
+    await client.query("COMMIT");
     res.status(201).json({ product_id: productId, message: "Product and tags created successfully" });
 
   } catch (error) {
-    await connection.rollback();
+    await client.query("ROLLBACK");
     res.status(400).json({ message: error.message || "Failed to create product" });
   } finally {
-    connection.release();
+    client.release();
   }
 };
 
@@ -98,9 +98,9 @@ const createProductWithTags = async (req, res) => {
  * PUT /products/:id
  */
 const updateProduct = async (req, res) => {
-  const connection = await pool.getConnection();
+  const client = await pool.connect();
   try {
-    await connection.beginTransaction();
+    await client.query("BEGIN");
 
     const orgId = req.org_id;
     const { id } = req.params;
@@ -109,21 +109,21 @@ const updateProduct = async (req, res) => {
     delete updateData.org_id;
     delete updateData.product_id;
 
-    const updated = await Product.update(id, orgId, updateData, connection);
+    const updated = await Product.update(id, orgId, updateData, client);
     if (!updated) throw new Error("Product not found");
 
     if (tag_ids !== undefined) {
-      await Product.tags.sync(id, tag_ids, orgId, connection);
+      await Product.tags.sync(id, tag_ids, orgId, client);
     }
 
-    await connection.commit();
+    await client.query("COMMIT");
     res.json({ message: "Product and tags updated successfully" });
   } catch (error) {
-    await connection.rollback();
+    await client.query("ROLLBACK");
     console.error("Error in updateProduct:", error);
     res.status(error.message === "Product not found" ? 404 : 500).json({ message: error.message || "Server error" });
   } finally {
-    connection.release();
+    client.release();
   }
 };
 
@@ -259,9 +259,9 @@ const getProductImages = async (req, res) => {
  * POST /products/:id/images
  */
 const addProductImage = async (req, res) => {
-  const connection = await pool.getConnection();
+  const client = await pool.connect();
   try {
-    await connection.beginTransaction();
+    await client.query("BEGIN");
 
     const { id } = req.params;
     const orgId = req.org_id;
@@ -272,16 +272,16 @@ const addProductImage = async (req, res) => {
     const prodCheck = await Product.findByIdUnderOrg(id, orgId);
     if (!prodCheck) throw new Error("Product not found");
 
-    const imageId = await Product.images.add(id, orgId, { image_url, display_order, is_primary }, connection);
+    const imageId = await Product.images.add(id, orgId, { image_url, display_order, is_primary }, client);
 
-    await connection.commit();
+    await client.query("COMMIT");
     res.status(201).json({ image_id: imageId, message: "Image added" });
   } catch (error) {
-    await connection.rollback();
+    await client.query("ROLLBACK");
     console.error("Error in addProductImage:", error);
     res.status(500).json({ message: error.message || "Server error" });
   } finally {
-    connection.release();
+    client.release();
   }
 };
 
@@ -289,9 +289,9 @@ const addProductImage = async (req, res) => {
  * PUT /products/:id/images/:image_id/set-primary
  */
 const setPrimaryImage = async (req, res) => {
-  const connection = await pool.getConnection();
+  const client = await pool.connect();
   try {
-    await connection.beginTransaction();
+    await client.query("BEGIN");
 
     const { id, image_id } = req.params;
     const orgId = req.org_id;
@@ -299,16 +299,16 @@ const setPrimaryImage = async (req, res) => {
     const prodCheck = await Product.findByIdUnderOrg(id, orgId);
     if (!prodCheck) throw new Error("Product not found");
 
-    await Product.images.setPrimary(id, orgId, image_id, connection);
+    await Product.images.setPrimary(id, orgId, image_id, client);
 
-    await connection.commit();
+    await client.query("COMMIT");
     res.json({ message: "Primary image updated" });
   } catch (error) {
-    await connection.rollback();
+    await client.query("ROLLBACK");
     console.error("Error in setPrimaryImage:", error);
     res.status(500).json({ message: error.message || "Server error" });
   } finally {
-    connection.release();
+    client.release();
   }
 };
 
@@ -316,9 +316,9 @@ const setPrimaryImage = async (req, res) => {
  * DELETE /products/:id/images/:image_id
  */
 const deleteProductImage = async (req, res) => {
-  const connection = await pool.getConnection();
+  const client = await pool.connect();
   try {
-    await connection.beginTransaction();
+    await client.query("BEGIN");
 
     const { id, image_id } = req.params;
     const orgId = req.org_id;
@@ -326,16 +326,16 @@ const deleteProductImage = async (req, res) => {
     const prodCheck = await Product.findByIdUnderOrg(id, orgId);
     if (!prodCheck) throw new Error("Product not found");
 
-    await Product.images.delete(id, orgId, image_id, connection);
+    await Product.images.delete(id, orgId, image_id, client);
 
-    await connection.commit();
+    await client.query("COMMIT");
     res.json({ message: "Image deleted" });
   } catch (error) {
-    await connection.rollback();
+    await client.query("ROLLBACK");
     console.error("Error in deleteProductImage:", error);
     res.status(500).json({ message: error.message || "Server error" });
   } finally {
-    connection.release();
+    client.release();
   }
 };
 

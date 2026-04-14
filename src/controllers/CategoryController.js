@@ -15,7 +15,7 @@ const createCat = async (req, res) => {
       message: "Category created successfully"
     });
   } catch (error) {
-    if (error.code === 'ER_DUP_ENTRY') {
+    if (error.code === '23505') {
       return res.status(400).json({ message: "Category name already exists in this organization" });
     }
     console.error("Error in createCat:", error);
@@ -75,10 +75,8 @@ const deleteCategory = async (req, res) => {
     if (!deleted) return res.status(404).json({ message: "Category Not Found" });
     res.status(200).json({ message: `Category(${id}) Deleted` });
   } catch (error) {
-    if (error.code === "ER_ROW_IS_REFERENCED_2") {
-      return res.status(400).json({
-        message: "This category contains products and cannot be deleted. Move products first."
-      });
+    if (error.code === '23503') {
+      return res.status(400).json({ message: "This category contains products and cannot be deleted. Move products first." });
     }
     console.error(`Error in deleteCategory for ${req.params.id}:`, error);
     res.status(500).json({ message: "Error deleting category" });
