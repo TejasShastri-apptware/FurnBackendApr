@@ -16,6 +16,6 @@ export default (req, res, next) => {
 
     req.org_id = rawOrgId ? Number(rawOrgId) : null;
     req.user_id = rawUserId ? Number(rawUserId) : null;
-    
+    // process.stdout.write("InjectContext - org_id: " + req.org_id + " user_id: " + req.user_id + "\n");
     next();
 };

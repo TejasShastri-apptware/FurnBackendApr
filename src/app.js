@@ -11,10 +11,17 @@ import addressRoutes from "./routes/addressRoutes.js";
 import tagRoutes from "./routes/tagRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
+
+import dotenv from "dotenv";
+dotenv.config();
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+    origin: process.env.ALLOWED_ORIGIN || 'http://localhost:5173',
+    credentials: true,
+}));
 app.use(express.json());
 
 app.use("/api/users", userRoutes);
@@ -27,9 +34,10 @@ app.use("/api/addresses", addressRoutes);
 app.use("/api/tags", tagRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/wishlist", wishlistRoutes);
+app.use("/api/payments", paymentRoutes);
 
 app.get("/", (req, res) => {
     res.send("Furn API is live");
 });
 
-export default app;
+export default app;
