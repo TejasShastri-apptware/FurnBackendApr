@@ -1,6 +1,8 @@
 import { User } from "../models/User.js";
 import { Address } from "../models/Address.js";
 import pool from "../config/db.js";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 /**
  * POST /users/login
@@ -27,13 +29,30 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // Plain-text comparison (to be upgraded to bcrypt later)
-    if (user.password_hash !== password) {
+    // bcrypt comparison
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    if (!isMatch) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
     const { password_hash, ...safeUser } = user;
-    return res.json({ message: 'Login successful', user: safeUser });
+
+    // Generate JWT
+    const token = jwt.sign(
+      { user_id: user.user_id, org_id: user.org_id, role_name: user.role_name },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    );
+
+    // Set HTTP-only cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
+    return res.json({ message: 'Login successful', user: safeUser, token });
   } catch (error) {
     console.error('Error in login:', error);
     return res.status(500).json({ message: 'Server error' });
@@ -159,11 +178,14 @@ const createUser = async (req, res) => {
 
     const orgId = req.org_id;
 
+    // Hash the password
+    const hashed = await bcrypt.hash(password_hash, 10);
+
     // Insert user
     const userId = await User.create({
       full_name,
       email,
-      password_hash,
+      password_hash: hashed,
       phone,
       role_id,
       org_id: orgId

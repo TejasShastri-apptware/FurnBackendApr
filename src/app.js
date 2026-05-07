@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 
 import userRoutes from "./routes/userRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
@@ -19,10 +20,11 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-    origin: process.env.ALLOWED_ORIGIN || 'http://localhost:5173',
+    origin: process.env.ALLOWED_ORIGIN || 'http://localhost:5174',
     credentials: true,
 }));
 app.use(express.json());
+app.use(cookieParser());
 
 app.use("/api/users", userRoutes);
 app.use("/api/products", productRoutes);
@@ -40,4 +42,4 @@ app.get("/", (req, res) => {
     res.send("Furn API is live");
 });
 
-export default app;
+export default app;
