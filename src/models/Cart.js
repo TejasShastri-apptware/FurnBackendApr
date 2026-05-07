@@ -24,7 +24,7 @@ export const Cart = {
  
   findAllByUser: async (userId, orgId) => {
     const {rows} = await pool.query(
-      `SELECT c.cart_item_id, c.product_id, p.name, p.price, p.image_url, c.quantity, 
+      `SELECT c.cart_item_id, c.product_id, p.name, p.price, p.image_url, p.stock_quantity, c.quantity, 
               (p.price * c.quantity) AS subtotal
        FROM cart_items c
        JOIN products p ON c.product_id = p.product_id
