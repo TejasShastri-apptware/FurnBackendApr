@@ -3,6 +3,7 @@ const router = express.Router();
 import multer from 'multer';
 import uploadProductImage from '../cloudinary/ImageController.js';
 import injectContext from '../middleware/injectContext.js';
+import { requireAdmin } from '../middleware/authMiddleware.js';
 
 // Store file in memory buffer (no temp disk writes)
 const upload = multer({
@@ -17,8 +18,7 @@ const upload = multer({
     },
 });
 
-// POST /api/upload/product/:product_id
-// Accepts a single "image" field in multipart/form-data
-router.post('/product/:product_id', injectContext, upload.single('image'), uploadProductImage);
+// POST /api/upload/product/:product_id — admin only
+router.post('/product/:product_id', injectContext, requireAdmin, upload.single('image'), uploadProductImage);
 
 export default router;

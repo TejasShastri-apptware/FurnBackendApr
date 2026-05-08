@@ -1,11 +1,12 @@
 import express from "express";
 import paymentController from "../controllers/paymentController.js";
 import injectContext from "../middleware/injectContext.js";
+import { requireAuth } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Protected routes using injectContext (to ensure user/org identity if needed)
-router.post("/create-order", injectContext, paymentController.createOrder);
-router.get("/get-payment/:paymentId", injectContext, paymentController.fetchPayment);
+// Payment operations require an authenticated user
+router.post("/create-order", injectContext, requireAuth, paymentController.createOrder);
+router.get("/get-payment/:paymentId", injectContext, requireAuth, paymentController.fetchPayment);
 
 export default router;
