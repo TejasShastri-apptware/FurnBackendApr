@@ -20,7 +20,7 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-    origin: process.env.ALLOWED_ORIGIN || 'http://localhost:5174',
+    origin: process.env.ALLOWED_ORIGIN || 'http://localhost:5173',
     credentials: true,
 }));
 app.use(express.json());
